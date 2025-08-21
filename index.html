@@ -9,112 +9,63 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <style>
     :root{
-      --bg:#0f172a;         /* slate-900 */
-      --panel:#111827;      /* gray-900 */
-      --muted:#94a3b8;      /* slate-400 */
-      --text:#e5e7eb;       /* gray-200 */
-      --accent:#22d3ee;     /* cyan-400 */
-      --border:#1f2937;     /* gray-800 */
+      --bg:#0f172a;
+      --panel:#111827;
+      --muted:#94a3b8;
+      --text:#e5e7eb;
+      --border:#1f2937;
     }
     *{box-sizing:border-box}
     html,body{height:100%}
     body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial}
     .app{display:grid;grid-template-columns:320px 1fr;grid-template-rows:1fr;gap:0;height:100%}
-    header{display:none}
-    header h1{font-size:16px;margin:0;font-weight:600}
-    header .small{color:var(--muted);font-weight:400}
     .sidebar{border-right:1px solid var(--border);overflow:auto}
     .viewer{overflow:auto}
-    .row{display:flex;gap:.5rem;align-items:center}
-    input,select,button{background:#0b1220;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:8px 10px}
-    input::placeholder{color:#7c8aa0}
-    button{cursor:pointer}
-    .controls{display:flex;gap:.5rem;flex-wrap:wrap}
-    .toolbar{display:none}
     .tree{padding:8px}
     .tree-item{display:flex;align-items:center;gap:.5rem;padding:6px 8px;border-radius:8px;cursor:pointer}
     .tree-item:hover{background:#0b1220}
     .tree-item.active{background:#0b1220;outline:1px solid #1e293b}
     .tree-children{margin-left:16px}
-    .muted{color:var(--muted)}
-    .badge{background:#0b1220;border:1px solid var(--border);padding:2px 6px;border-radius:999px;color:var(--muted)}
     .code-wrap{padding:16px}
     pre{margin:0;}
     pre,code{font-family: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;font-size:13px}
-    .code-header{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#0b1220;border:1px solid var(--border);border-bottom:none;border-radius:12px 12px 0 0}
+    .code-header{padding:10px 12px;background:#0b1220;border:1px solid var(--border);border-bottom:none;border-radius:12px 12px 0 0}
     .code-header .path{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .code-actions{display:flex;gap:.5rem}
     .code-body{border:1px solid var(--border);border-radius:0 0 12px 12px;overflow:auto}
     .error{padding:12px;margin:8px;border:1px solid #7f1d1d;background:#450a0a;color:#fecaca;border-radius:8px}
-    .footer{padding:8px 12px;border-top:1px solid var(--border);color:var(--muted)}
-    .pill{padding:2px 8px;border-radius:999px;border:1px solid var(--border);background:#0b1220}
-    .link{color:var(--accent);text-decoration:none}
   </style>
-  <!-- highlight.js -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/csharp.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/json.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlightjs-line-numbers.js/2.8.0/highlightjs-line-numbers.min.js"></script>
 </head>
 <body>
   <div class="app">
-    <header>
-      <h1>Game Design Code Share<span class="small">— read-only</span></h1>
-      <span class="badge" id="status">Idle</span>
-      <div class="controls">
-        <input id="owner" placeholder="owner (e.g. KasaiMonkey)">
-        <input id="repo" placeholder="repo (e.g. Formatter)">
-        <input id="branch" placeholder="branch (e.g. main)">
-        <input id="path" placeholder="root path (optional, e.g. Assets/Scripts)">
-        <button id="loadBtn">Load</button>
-      </div>
-    </header>
-
     <aside class="sidebar">
-      <div class="toolbar">
-        <input id="filter" placeholder="Filter files… (Ctrl+K)" />
-        <span class="pill"><span id="fileCount">0</span> files</span>
-      </div>
       <div class="tree" id="tree"></div>
     </aside>
-
     <main class="viewer">
       <div class="code-wrap">
         <div class="code-header">
           <div class="path" id="activePath">Choose a file from the left…</div>
-          <div class="code-actions">
-            <a class="link" id="openGithub" target="_blank" rel="noopener">Open on GitHub</a>
-            <a class="link" id="openRaw" target="_blank" rel="noopener">Raw</a>
-            <button id="copyBtn">Copy</button>
-          </div>
         </div>
         <div class="code-body">
           <pre><code id="code" class="language-cs">// Your file will appear here.</code></pre>
         </div>
         <div id="error" class="error" style="display:none"></div>
       </div>
-      <div class="footer">Tip: Make the repo public for easiest classroom use. Private repos require an access token; for security, prefer a server proxy rather than exposing tokens in the browser.</div>
     </main>
   </div>
 
   <script>
-    // ----- Config via URL params or inputs -----
-    const qs = new URLSearchParams(location.search);
     const $ = sel => document.querySelector(sel);
-    const ownerI = $('#owner');
-    const repoI  = $('#repo');
-    const branchI= $('#branch');
-    const pathI  = $('#path');
-    ownerI.value  = qs.get('owner')  || 'MasayaAUT';
-    repoI.value   = qs.get('repo')   || 'CodeShare';
-    branchI.value = qs.get('branch') || 'main';
-    pathI.value   = qs.get('path')   || 'Scripts';
-
-    const status = (t)=>{ const el=$('#status'); el.textContent=t; };
-
     const apiBase = (o,r)=>`https://api.github.com/repos/${encodeURIComponent(o)}/${encodeURIComponent(r)}`;
     const rawBase = (o,r,b)=>`https://raw.githubusercontent.com/${encodeURIComponent(o)}/${encodeURIComponent(r)}/${encodeURIComponent(b)}`;
+
+    const owner = 'MasayaAUT';
+    const repo = 'CodeShare';
+    const branch = 'main';
+    const rootPath = 'Scripts';
 
     const extToLang = (p)=>{
       const m = p.toLowerCase().match(/\.([a-z0-9]+)$/);
@@ -126,14 +77,12 @@
     async function ghGet(url){
       const res = await fetch(url, { headers: { 'Accept':'application/vnd.github+json' }});
       if(!res.ok){
-        const body = await res.text();
-        throw new Error(`${res.status} ${res.statusText}: ${body}`);
+        throw new Error(res.status + ' ' + res.statusText);
       }
       return res.json();
     }
 
-    async function listTree(owner, repo, branch, rootPath=''){
-      // Use the Contents API recursively, respecting directories
+    async function listTree(){
       const out = [];
       async function walk(path){
         const url = `${apiBase(owner,repo)}/contents/${path?encodeURIComponent(path):''}?ref=${encodeURIComponent(branch)}`;
@@ -151,7 +100,6 @@
     }
 
     function renderTree(files){
-      const filter = $('#filter').value.toLowerCase();
       const root = {};
       for(const f of files){
         const parts = f.path.split('/');
@@ -170,24 +118,16 @@
       treeEl.innerHTML='';
 
       function makeNode(obj, basePath=''){
-        const keys = Object.keys(obj).sort((a,b)=>{
-          const A = typeof obj[a].__file === 'undefined' ? 0 : 1;
-          const B = typeof obj[b].__file === 'undefined' ? 0 : 1;
-          return A - B || a.localeCompare(b);
-        });
+        const keys = Object.keys(obj).sort();
         const container = document.createElement('div');
         container.className = 'tree-children';
         for(const key of keys){
           const val = obj[key];
           const full = basePath ? basePath + '/' + key : key;
           const isFile = !!val.__file;
-          if(filter && !full.toLowerCase().includes(filter)) continue;
-
           const item = document.createElement('div');
           item.className = 'tree-item';
-          item.innerHTML = isFile
-            ? `📄 <span>${key}</span>`
-            : `📁 <span>${key}</span>`;
+          item.innerHTML = isFile ? `📄 <span>${key}</span>` : `📁 <span>${key}</span>`;
           container.appendChild(item);
 
           if(isFile){
@@ -200,17 +140,14 @@
         return container;
       }
 
-      // Build from a synthetic root so top-level folders display nicely
       const wrapper = document.createElement('div');
       wrapper.appendChild(makeNode(root));
       treeEl.appendChild(wrapper);
-      $('#fileCount').textContent = files.length;
     }
 
     async function openFile(file){
       try{
-        status('Loading file…');
-        const url = `${rawBase(ownerI.value, repoI.value, branchI.value)}/${file.path}`;
+        const url = `${rawBase(owner, repo, branch)}/${file.path}`;
         const res = await fetch(url);
         const text = await res.text();
         $('#activePath').textContent = file.path;
@@ -219,58 +156,20 @@
         code.textContent = text;
         hljs.highlightElement(code);
         try { hljs.lineNumbersBlock(code); } catch {}
-        $('#openGithub').href = `https://github.com/${encodeURIComponent(ownerI.value)}/${encodeURIComponent(repoI.value)}/blob/${encodeURIComponent(branchI.value)}/${file.path}`;
-        $('#openRaw').href    = url;
         $('#error').style.display='none';
-        status('Ready');
       }catch(err){
         const e = $('#error');
         e.style.display='block';
         e.textContent = 'Error: ' + err.message;
-        status('Error');
       }
     }
 
-    async function loadRepo(){
-      const owner = ownerI.value.trim();
-      const repo  = repoI.value.trim();
-      const branch= branchI.value.trim() || 'main';
-      const root  = pathI.value.trim();
-      if(!owner || !repo){ alert('Please set owner and repo'); return; }
-      status('Loading…');
-      try{
-        const files = await listTree(owner, repo, branch, root);
-        // filter to common text code files only
-        const allowed = files.filter(f => /\.(cs|json|md|shader|hlsl|cginc|txt)$/i.test(f.path));
-        renderTree(allowed);
-        status('Ready');
-        if(allowed[0]) openFile(allowed[0]);
-        // push state so you can share the URL
-        const newQs = new URLSearchParams({ owner, repo, branch, path: root });
-        history.replaceState({}, '', '?' + newQs.toString());
-      }catch(err){
-        const e = $('#error');
-        e.style.display='block';
-        e.textContent = 'Error: ' + err.message + '\nMake sure the repo/branch exists and is PUBLIC.';
-        status('Error');
-      }
-    }
-
-    $('#loadBtn').addEventListener('click', loadRepo);
-    $('#filter').addEventListener('input', ()=>{
-      // re-render using the last fetched list by re-calling loadRepo then restoring selection
-      loadRepo();
-    });
-    document.addEventListener('keydown', (e)=>{
-      if(e.ctrlKey && e.key.toLowerCase()==='k'){ e.preventDefault(); $('#filter').focus(); }
-    });
-    $('#copyBtn').addEventListener('click', async ()=>{
-      const code = $('#code').textContent;
-      try{ await navigator.clipboard.writeText(code); status('Copied'); setTimeout(()=>status('Ready'), 1200);}catch{ status('Copy failed'); }
-    });
-
-    // Auto-load if owner+repo provided in URL
-    if(ownerI.value && repoI.value){ loadRepo(); }
+    (async ()=>{
+      const files = await listTree();
+      const allowed = files.filter(f => /\.(cs|json|md|shader|hlsl|cginc|txt)$/i.test(f.path));
+      renderTree(allowed);
+      if(allowed[0]) openFile(allowed[0]);
+    })();
   </script>
 </body>
 </html>
